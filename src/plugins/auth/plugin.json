@@ -1,0 +1,8 @@
+{
+  "name": "auth",
+  "version": "1.0.0",
+  "description": "Authentication plugin providing user registration and login functionality",
+  "enabled": true,
+  "author": "Plugin Arc Team"
+}
+

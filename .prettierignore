@@ -1,0 +1,17 @@
+node_modules
+dist
+build
+coverage
+.next
+out
+.turbo
+.prisma
+.cache
+.eslintcache
+*.log
+.env
+.env.*
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
