@@ -6,7 +6,24 @@ import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import Redis from 'ioredis';
 import { Logger } from 'pino';
+import { Server } from 'socket.io';
 import { TypedEventEmitter } from '../shared/events';
+import type {
+  ServerToClientEvents,
+  ClientToServerEvents,
+  InterServerEvents,
+  SocketData,
+} from '../shared/websocket/types';
+
+/**
+ * Typed Socket.io server type
+ */
+export type TypedSocketServer = Server<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  InterServerEvents,
+  SocketData
+>;
 
 /**
  * Plugin metadata from plugin.json
@@ -34,6 +51,8 @@ export interface PluginContext {
   logger: Logger;
   /** Plugin configuration from plugin.json */
   config: PluginMetadata;
+  /** Socket.io server instance for real-time communication (may be null if WebSocket disabled) */
+  io: TypedSocketServer | null;
 }
 
 /**
@@ -140,4 +159,3 @@ export interface PluginRegistry {
   /** Unregister a plugin */
   unregister(name: string): boolean;
 }
-

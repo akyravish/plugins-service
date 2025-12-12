@@ -9,6 +9,7 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import helmet from 'helmet';
 import hpp from 'hpp';
+import swaggerUi from 'swagger-ui-express';
 
 import { config, APP_CONSTANTS } from '../config';
 import {
@@ -24,7 +25,12 @@ import {
 import { checkDatabaseHealth } from '../shared/db/prisma';
 import { checkRedisHealth } from '../shared/cache/redis';
 import { checkKafkaHealth } from '../shared/messaging';
+import { generateOpenAPIDocument } from '../shared/openapi';
+import { registerHealthOpenAPI } from '../shared/openapi/health';
 import logger from './logger';
+
+// Register health endpoint with OpenAPI (called once at module load)
+registerHealthOpenAPI();
 
 /**
  * Create and configure the Express application
@@ -65,12 +71,15 @@ export function createApp(): Express {
   }
 
   // Security headers with Helmet
+  // Note: CSP configured to allow Swagger UI assets
   app.use(
     helmet({
       contentSecurityPolicy: {
         useDefaults: true,
         directives: {
           defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", 'data:', 'https:'],
           objectSrc: ["'none'"],
           upgradeInsecureRequests: [],
@@ -81,7 +90,7 @@ export function createApp(): Express {
         : false,
       referrerPolicy: { policy: 'no-referrer' },
       crossOriginOpenerPolicy: { policy: 'same-origin' },
-      crossOriginResourcePolicy: { policy: 'same-origin' },
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
       xContentTypeOptions: true,
       xFrameOptions: { action: 'deny' },
     }),
@@ -148,6 +157,8 @@ export function createApp(): Express {
 
   // Health check endpoint
   const healthRouter = Router();
+  const startTime = Date.now();
+
   healthRouter.get('/', async (_req, res) => {
     try {
       const [dbHealthy, redisHealthy, kafkaHealthy] = await Promise.all([
@@ -172,6 +183,9 @@ export function createApp(): Express {
       return res.status(statusCode).json({
         status,
         timestamp: new Date().toISOString(),
+        uptime: Math.floor((Date.now() - startTime) / 1000),
+        version: APP_CONSTANTS.API_VERSION,
+        environment: config.nodeEnv,
         services,
       });
     } catch {
@@ -182,6 +196,35 @@ export function createApp(): Express {
     }
   });
   app.use('/health', healthRouter);
+
+  // OpenAPI documentation routes (if enabled)
+  if (config.openapi.enabled) {
+    // Serve raw OpenAPI JSON spec
+    app.get('/api/docs.json', (_req, res) => {
+      try {
+        const spec = generateOpenAPIDocument();
+        return res.json(spec);
+      } catch (error) {
+        logger.error({ error }, 'Failed to generate OpenAPI spec');
+        return res.status(500).json({ error: 'Failed to generate API documentation' });
+      }
+    });
+
+    // Serve Swagger UI
+    app.use(
+      '/api/docs',
+      swaggerUi.serve,
+      swaggerUi.setup(undefined, {
+        swaggerOptions: {
+          url: '/api/docs.json',
+          persistAuthorization: true,
+        },
+        customSiteTitle: 'Plugin Arc API Docs',
+      }),
+    );
+
+    logger.info('OpenAPI documentation enabled at /api/docs');
+  }
 
   return app;
 }
@@ -195,4 +238,3 @@ export function registerErrorHandler(app: Express): void {
 }
 
 export default createApp;
-

@@ -3,6 +3,7 @@
  * Initializes the application and starts the HTTP server.
  */
 
+import * as http from 'http';
 import * as path from 'path';
 import { createApp, registerErrorHandler } from './app';
 import { createPluginLoader } from './plugin-loader';
@@ -11,6 +12,7 @@ import { config } from '../config';
 import { connectDatabase, disconnectDatabase } from '../shared/db/prisma';
 import { connectRedis, disconnectRedis, setRedisLogger } from '../shared/cache/redis';
 import { initKafka, disconnectKafka, setKafkaLogger } from '../shared/messaging';
+import { initWebSocket, disconnectWebSocket, setWebSocketLogger } from '../shared/websocket';
 import { pluginEvents } from '../shared/events';
 import logger from './logger';
 
@@ -73,10 +75,20 @@ async function main(): Promise<void> {
   // Register global error handler (must be after routes)
   registerErrorHandler(app);
 
+  // Create HTTP server
+  const server = http.createServer(app);
+
+  // Initialize WebSocket server (if enabled)
+  if (config.websocket.enabled) {
+    setWebSocketLogger(logger);
+    initWebSocket(server);
+    logger.info('WebSocket server initialized');
+  }
+
   // Start HTTP server
   const { port, host } = config;
-  const server = app.listen(port, host, () => {
-    logger.info({ host, port }, 'Server listening');
+  server.listen(port, host, () => {
+    logger.info({ host, port, websocket: config.websocket.enabled }, 'Server listening');
   });
 
   // Configure server timeouts
@@ -107,6 +119,11 @@ async function main(): Promise<void> {
         disconnectRedis().catch((err) => logger.error({ err }, 'Error disconnecting Redis')),
         config.kafka.enabled
           ? disconnectKafka().catch((err) => logger.error({ err }, 'Error disconnecting Kafka'))
+          : Promise.resolve(),
+        config.websocket.enabled
+          ? disconnectWebSocket().catch((err) =>
+              logger.error({ err }, 'Error disconnecting WebSocket'),
+            )
           : Promise.resolve(),
       ]);
 
@@ -140,4 +157,3 @@ main().catch((error) => {
   logger.fatal({ error }, 'Failed to start server');
   process.exit(1);
 });
-

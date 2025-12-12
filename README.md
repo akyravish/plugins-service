@@ -7,6 +7,8 @@ A production-ready Node.js plugin-based modular system built with Express.js and
 - **Plugin Architecture**: Independent, hot-swappable plugins with lifecycle hooks
 - **Event-Driven**: Inter-plugin communication via typed event emitter
 - **Kafka Messaging**: Async message queue for event-driven architecture
+- **WebSocket Support**: Real-time communication via Socket.io with JWT authentication
+- **OpenAPI Documentation**: Auto-generated Swagger docs from Zod schemas
 - **Type-Safe**: Full TypeScript with strict mode
 - **Production Ready**: Security headers, rate limiting, graceful shutdown
 - **Scalable**: Redis-backed caching, PostgreSQL with Prisma, Kafka for messaging
@@ -79,7 +81,9 @@ plugin-arc/
 │   │   ├── db/         # Prisma client
 │   │   ├── cache/      # Redis client
 │   │   ├── messaging/  # Kafka producer/consumer
-│   │   └── events/     # Typed event emitter
+│   │   ├── events/     # Typed event emitter
+│   │   ├── openapi/    # OpenAPI/Swagger documentation
+│   │   └── websocket/  # Socket.io server
 │   └── plugins/        # Plugin modules
 │       └── auth/       # Authentication plugin
 ├── prisma/             # Database schema and migrations
@@ -108,21 +112,90 @@ KAFKA_CLIENT_ID="plugin-arc"
 # JWT
 JWT_SECRET="your-secret-key-at-least-32-characters"
 JWT_EXPIRES_IN="7d"
+JWT_COOKIE_NAME="token"
 
 # Rate Limiting
 RATE_LIMIT_WINDOW_MS=60000
 RATE_LIMIT_MAX=100
 
+# Request
+REQUEST_TIMEOUT_MS=30000
+
 # Logging
 LOG_LEVEL=info
 LOG_FORMAT=pretty
+
+# WebSocket
+WS_ENABLED=true
+WS_CORS_ORIGIN="*"
+
+# OpenAPI Documentation
+OPENAPI_ENABLED=true
+```
+
+## API Documentation
+
+### Swagger UI
+
+Interactive API documentation is available at `/api/docs`. The OpenAPI spec is auto-generated from Zod schemas.
+
+- **Swagger UI**: `http://localhost:4000/api/docs`
+- **OpenAPI JSON**: `http://localhost:4000/api/docs.json`
+
+Plugins can register their routes with OpenAPI metadata:
+
+```typescript
+import { openApiRegistry } from '../../shared/openapi';
+import { z } from 'zod';
+
+// Define schema with OpenAPI metadata
+const MyRequestSchema = z
+  .object({
+    name: z.string().openapi({ description: 'User name', example: 'John' }),
+  })
+  .openapi('MyRequest', { description: 'Request body' });
+
+// Register route
+openApiRegistry.registerPath({
+  method: 'post',
+  path: '/api/v1/my-plugin/action',
+  tags: ['MyPlugin'],
+  summary: 'Perform an action',
+  request: {
+    body: { content: { 'application/json': { schema: MyRequestSchema } } },
+  },
+  responses: { 200: { description: 'Success' } },
+});
 ```
 
 ## API Endpoints
 
 ### Health Check
 
-- `GET /health` - System health status (database, redis, kafka)
+`GET /health` - Returns system health status
+
+**Response:**
+
+```json
+{
+  "status": "ok",
+  "timestamp": "2025-12-12T06:50:00.000Z",
+  "uptime": 3600,
+  "version": "v1",
+  "environment": "development",
+  "services": {
+    "database": "connected",
+    "redis": "connected",
+    "kafka": "connected"
+  }
+}
+```
+
+| Status     | HTTP Code | Meaning                   |
+| ---------- | --------- | ------------------------- |
+| `ok`       | 200       | All services healthy      |
+| `degraded` | 503       | One or more services down |
+| `error`    | 500       | Health check failed       |
 
 ### Auth Plugin
 
@@ -158,6 +231,8 @@ src/plugins/your-plugin/
 ├── controller.ts   # Request handlers
 ├── service.ts      # Business logic
 ├── validators.ts   # Zod schemas
+├── openapi.ts      # OpenAPI route documentation (optional)
+├── socket.ts       # WebSocket handlers (optional)
 ├── middleware.ts   # Plugin middleware (optional)
 ├── types/          # Plugin-specific types
 │   ├── index.ts
@@ -256,6 +331,71 @@ import { createConsumer } from '../../shared/messaging';
 await createConsumer('my-group', ['my-topic'], async (message, metadata) => {
   console.log('Received:', message);
 });
+```
+
+## WebSocket (Socket.io)
+
+Real-time communication is enabled when `WS_ENABLED=true`. Socket.io server runs on the same port as the HTTP server.
+
+### Client Connection
+
+```typescript
+import { io } from 'socket.io-client';
+
+// Connect with JWT authentication
+const socket = io('http://localhost:4000', {
+  auth: { token: 'your-jwt-token' },
+});
+
+// Or via query parameter
+const socket = io('http://localhost:4000?token=your-jwt-token');
+```
+
+### Server-to-Client Events
+
+| Event                  | Payload                | Description         |
+| ---------------------- | ---------------------- | ------------------- |
+| `auth:user-logged-in`  | `{ userId, email }`    | User logged in      |
+| `auth:user-logged-out` | `{ userId }`           | User logged out     |
+| `auth:user-created`    | `{ userId, email }`    | New user registered |
+| `system:notification`  | `{ type, message }`    | System notification |
+| `broadcast`            | `{ channel, payload }` | Channel broadcast   |
+| `error`                | `{ code, message }`    | Error message       |
+
+### Client-to-Server Events
+
+| Event         | Payload   | Response                    | Description          |
+| ------------- | --------- | --------------------------- | -------------------- |
+| `ping`        | -         | `{ pong: true, timestamp }` | Connection health    |
+| `join-room`   | `roomId`  | `{ success, error? }`       | Join a room          |
+| `leave-room`  | `roomId`  | `{ success }`               | Leave a room         |
+| `subscribe`   | `channel` | `{ success, error? }`       | Subscribe to channel |
+| `unsubscribe` | `channel` | `{ success }`               | Unsubscribe          |
+
+### Plugin WebSocket Usage
+
+Plugins have access to the Socket.io server via `ctx.io`:
+
+```typescript
+// In plugin onEnable hook
+async onEnable(ctx: PluginContext): Promise<void> {
+  if (ctx.io) {
+    // Setup custom socket handlers
+    ctx.io.on('connection', (socket) => {
+      socket.on('my-event', (data) => {
+        // Handle event
+      });
+    });
+  }
+}
+
+// Emit to specific user
+import { emitToUser } from '../../shared/websocket';
+emitToUser(userId, 'auth:user-logged-in', { userId, email });
+
+// Broadcast to all
+import { broadcast } from '../../shared/websocket';
+broadcast('system:notification', { type: 'info', message: 'Hello!' });
 ```
 
 ## Scripts

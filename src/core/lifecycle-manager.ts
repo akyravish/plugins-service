@@ -16,6 +16,7 @@ import { createPluginLogger } from './logger';
 import { prisma } from '../shared/db/prisma';
 import { redis } from '../shared/cache/redis';
 import { pluginEvents } from '../shared/events';
+import { getIO } from '../shared/websocket';
 import logger from './logger';
 
 /**
@@ -64,6 +65,7 @@ export function createPluginContext(metadata: PluginMetadata): PluginContext {
     events: pluginEvents,
     logger: createPluginLogger(metadata.name),
     config: metadata,
+    io: getIO(),
   };
 }
 
@@ -249,4 +251,3 @@ export class LifecycleManager {
  * Singleton lifecycle manager instance
  */
 export const lifecycleManager = new LifecycleManager();
-

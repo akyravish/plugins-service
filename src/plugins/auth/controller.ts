@@ -9,6 +9,7 @@ import { sendSuccess, sendCreated } from '../../common/responses';
 import { pluginEvents } from '../../shared/events';
 import { prisma } from '../../shared/db/prisma';
 import { publishUserCreated, publishUserLoggedIn, publishFailedLogin } from './events';
+import { broadcastUserCreated, broadcastUserLoggedIn } from './socket';
 import { InvalidCredentialsError } from '../../common/errors';
 
 // Create auth service instance
@@ -30,6 +31,9 @@ export async function registerHandler(req: Request, res: Response): Promise<Resp
     userId: result.user.id,
     email: result.user.email,
   });
+
+  // Broadcast via WebSocket (real-time)
+  broadcastUserCreated(result.user.id, result.user.email);
 
   // Publish to Kafka (async, fire-and-forget)
   publishUserCreated(result.user.id, result.user.email).catch(() => {
@@ -59,6 +63,9 @@ export async function loginHandler(req: Request, res: Response): Promise<Respons
       userId: result.user.id,
       email: result.user.email,
     });
+
+    // Broadcast via WebSocket (real-time to user's other sessions)
+    broadcastUserLoggedIn(result.user.id, result.user.email);
 
     // Publish to Kafka (async, fire-and-forget)
     publishUserLoggedIn(result.user.id, result.user.email, ip, userAgent).catch(() => {
@@ -90,4 +97,3 @@ export async function getMeHandler(req: Request, res: Response): Promise<Respons
 
   return sendSuccess(res, { user }, 200);
 }
-

@@ -23,6 +23,7 @@
     "test:integration": "jest tests/integration"
   },
   "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^7.3.0",
     "@prisma/client": "^6.18.0",
     "bcryptjs": "^2.4.3",
     "compression": "^1.8.1",
@@ -39,6 +40,8 @@
     "pino": "^9.4.0",
     "pino-pretty": "^11.2.1",
     "rate-limit-redis": "^2.1.0",
+    "socket.io": "^4.8.1",
+    "swagger-ui-express": "^5.0.1",
     "zod": "^3.23.2"
   },
   "devDependencies": {
@@ -53,6 +56,7 @@
     "@types/node": "^20.4.2",
     "@types/rate-limit-redis": "^1.7.4",
     "@types/supertest": "^6.0.3",
+    "@types/swagger-ui-express": "^4.1.8",
     "@typescript-eslint/eslint-plugin": "^6.9.0",
     "@typescript-eslint/parser": "^6.9.0",
     "eslint": "^8.46.0",

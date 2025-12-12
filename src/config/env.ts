@@ -22,7 +22,10 @@ const envSchema = z.object({
   // Kafka
   KAFKA_BROKERS: z.string().default('localhost:9092'),
   KAFKA_CLIENT_ID: z.string().default('plugin-arc'),
-  KAFKA_ENABLED: z.string().transform((val) => val === 'true').default('false'),
+  KAFKA_ENABLED: z
+    .string()
+    .transform((val) => val === 'true')
+    .default('false'),
 
   // JWT
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
@@ -39,6 +42,19 @@ const envSchema = z.object({
   // Logging
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   LOG_FORMAT: z.enum(['json', 'pretty']).default('pretty'),
+
+  // WebSocket
+  WS_ENABLED: z
+    .string()
+    .transform((val) => val === 'true')
+    .default('true'),
+  WS_CORS_ORIGIN: z.string().default('*'),
+
+  // OpenAPI Documentation
+  OPENAPI_ENABLED: z
+    .string()
+    .transform((val) => val === 'true')
+    .default('true'),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -67,4 +83,3 @@ function validateEnv(): Env {
 }
 
 export const env = validateEnv();
-

@@ -7,6 +7,8 @@ import { Router } from 'express';
 import { Plugin, PluginContext } from '../../core/types';
 import { setupRoutes } from './routes';
 import { startAuthConsumers, stopAuthConsumers, setConsumerLogger } from './events';
+import { registerAuthOpenAPI } from './openapi';
+import { setupAuthSocketHandlers, cleanupAuthSocketHandlers, setAuthSocketLogger } from './socket';
 
 /**
  * Auth plugin implementation
@@ -20,9 +22,14 @@ const authPlugin: Plugin = {
    */
   async onLoad(ctx: PluginContext): Promise<void> {
     ctx.logger.info('Auth plugin loading...');
-    
-    // Set logger for Kafka consumers
+
+    // Set logger for Kafka consumers and socket handlers
     setConsumerLogger(ctx.logger);
+    setAuthSocketLogger(ctx.logger);
+
+    // Register OpenAPI documentation
+    registerAuthOpenAPI();
+    ctx.logger.info('Auth plugin OpenAPI routes registered');
   },
 
   /**
@@ -38,10 +45,8 @@ const authPlugin: Plugin = {
       ctx.logger.warn({ error }, 'Failed to start Kafka consumers, continuing without messaging');
     }
 
-    // Example: Listen to events from other plugins
-    // ctx.events.onEvent('some:event', (data) => {
-    //   ctx.logger.info({ data }, 'Received event');
-    // });
+    // Setup WebSocket handlers
+    setupAuthSocketHandlers(ctx.io);
   },
 
   /**
@@ -59,6 +64,9 @@ const authPlugin: Plugin = {
 
     // Stop Kafka consumers
     await stopAuthConsumers();
+
+    // Cleanup WebSocket handlers
+    cleanupAuthSocketHandlers();
   },
 
   /**
@@ -70,4 +78,3 @@ const authPlugin: Plugin = {
 };
 
 export default authPlugin;
-

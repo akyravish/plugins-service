@@ -40,3 +40,33 @@ export type { PluginEvents, EventHandler, EventTypes } from './events';
 // Utils
 export * from './utils';
 
+// OpenAPI
+export {
+  openApiRegistry,
+  generateOpenAPIDocument,
+  createSuccessResponseSchema,
+  createPaginatedResponseSchema,
+} from './openapi';
+export type { OpenAPIDocumentInfo, RouteConfig } from './openapi';
+
+// WebSocket
+export {
+  initWebSocket,
+  disconnectWebSocket,
+  getIO,
+  setWebSocketLogger,
+  emitToUser,
+  emitToChannel,
+  broadcast,
+  getConnectedCount,
+  getAuthenticatedCount,
+  isWebSocketInitialized,
+  getUserRoom,
+  getChannelRoom,
+} from './websocket';
+export type {
+  ServerToClientEvents,
+  ClientToServerEvents,
+  SocketData,
+  SocketConnectionInfo,
+} from './websocket';

@@ -49,10 +49,20 @@ export const config = {
   // Logging
   logLevel: env.LOG_LEVEL,
   logFormat: env.LOG_FORMAT,
+
+  // WebSocket
+  websocket: {
+    enabled: env.WS_ENABLED,
+    corsOrigin: env.WS_CORS_ORIGIN,
+  },
+
+  // OpenAPI Documentation
+  openapi: {
+    enabled: env.OPENAPI_ENABLED,
+  },
 } as const;
 
 export type Config = typeof config;
 
 // Re-export constants
 export * from './constants';
-
