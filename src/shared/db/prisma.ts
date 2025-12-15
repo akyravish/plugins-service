@@ -17,10 +17,7 @@ declare global {
  */
 function createPrismaClient(): PrismaClient {
   return new PrismaClient({
-    log: config.isDevelopment
-      ? ['query', 'info', 'warn', 'error']
-      : ['error'],
-    datasourceUrl: config.databaseUrl,
+    log: config.isDevelopment ? ['query', 'info', 'warn', 'error'] : ['error'],
   });
 }
 
@@ -61,4 +58,3 @@ export async function checkDatabaseHealth(): Promise<boolean> {
     return false;
   }
 }
-

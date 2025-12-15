@@ -14,10 +14,34 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   password  String
-  name      String
+  isVerified Boolean @default(false) @map("is_verified")
+  isDeleted Boolean @default(false) @map("is_deleted")
+  isLoggedIn Boolean @default(false) @map("is_logged_in")
+  lastLoggedInAt DateTime @map("last_logged_in_at")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  userMetaData UserMetaData[]
+
   @@map("users")
+}
+
+model UserMetaData {
+  id String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+  name   String? @map("name")
+  avatarUrl String? @map("avatar_url")
+  bio String? @map("bio")
+  location String? @map("location")
+  country String? @map("country")
+  website String? @map("website")
+  twitter String? @map("twitter")
+  github String? @map("github")
+  linkedin String? @map("linkedin")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("user_meta_data")
 }
 
