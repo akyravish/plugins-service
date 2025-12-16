@@ -42,11 +42,9 @@ export class AuthService {
    * Generate a JWT token for a user
    */
   private generateToken(userId: string, email: string): string {
-    return jwt.sign(
-      { userId, email },
-      config.jwt.secret,
-      { expiresIn: config.jwt.expiresIn as jwt.SignOptions['expiresIn'] },
-    );
+    return jwt.sign({ userId, email }, config.jwt.secret, {
+      expiresIn: config.jwt.expiresIn as jwt.SignOptions['expiresIn'],
+    });
   }
 
   /**
@@ -155,4 +153,3 @@ export class AuthService {
     }
   }
 }
-
